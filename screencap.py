@@ -1,14 +1,34 @@
 #!/bin/python3
 
-from PIL import ImageGrab
+#  from PIL import ImageGrab
 import numpy as np
 import cv2
+import time
+import board
+import neopixel
 
+'''
+define theseeeeee
+'''
+horizontalLEDs = 55
+verticalLEDs = 30
+
+
+pixel_pin = board.D18
+num_pixels = 2*horizontalLEDs + 2*verticalLEDs
+ORDER = neopixel.GRB
+
+pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=1, auto_write=False, pixel_order=ORDER)
+pixels.fill((0,0,0))
+pixels.show()
+
+cap = cv2.VideoCapture(0)
 
 def getFrame():
-    img = ImageGrab.grab(bbox=(0,0,1920,1080)) #bbox specifies specific region (bbox= x,y,width,height *starts top-left)
-    img_np = np.array(img) #this is the array obtained from conversion
-    frame = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    #  img = ImageGrab.grab(bbox=(0,0,1920,1080)) #bbox specifies specific region (bbox= x,y,width,height *starts top-left)
+    #  img_np = np.array(img) #this is the array obtained from conversion
+    #  frame = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    ret, frame = cap.read()
     #  cv2.imshow("test", frame)
     #  cv2.waitKey(0)
     #  cv2.destroyAllWindows()
@@ -19,15 +39,21 @@ def getImportantPixels(horizontalLEDs, verticalLEDs): # assumes same # on top an
     f = getFrame()
     resolution = len(f[0]), len(f) # width, height ex (1920, 1080)
 
-    horizontalStep = int(resolution[0] / horizontalLEDs)
+    horizontalStep = (resolution[0] / horizontalLEDs)
     xPixels = []
-    for i in range(0, resolution[0], horizontalStep):
-        xPixels.append(i)
+    i = 0
+    while i < resolution[0]-1:
+        xPixels.append(int(i))
+        i += horizontalStep
+
+    #  print(len(xPixels))
 
     verticalStep = int(resolution[1] / verticalLEDs)
     yPixels = []
-    for i in range(0, resolution[1], verticalStep):
+    i = 0
+    while i < resolution[1]-1:
         yPixels.append(i)
+        i += verticalStep
 
     #  print(xPixels)
     #  print(yPixels)
@@ -35,20 +61,20 @@ def getImportantPixels(horizontalLEDs, verticalLEDs): # assumes same # on top an
     return xPixels, yPixels
     
 
-def setLEDs(pixels, frame): # make bottom right start of the chain going 
+def setLEDs(screenPix, frame): # make bottom right start of the chain going 
     topRow = []
     bottomRow = []
     left = []
     right = []
 
-    xPix, yPix = pixels
+    xPix, yPix = screenPix 
     for p in xPix:
         topRow.append(frame[0][p])
-        bottomRow.append(frame[len(pixels)-1][p])
+        bottomRow.append(frame[len(screenPix)-1][p])
 
     for p in yPix:
         left.append(frame[p][0])
-        right.append(frame[p][len(pixels[0])-1])
+        right.append(frame[p][len(screenPix[0])-1])
 
     #  print(topRow)
     #  print(bottomRow)
@@ -58,14 +84,25 @@ def setLEDs(pixels, frame): # make bottom right start of the chain going
     # make everything fit in a counterclockwise circle starting bottom right
     right.reverse()
     topRow.reverse()
+    concatenatedList = np.concatenate((left, bottomRow, right, topRow))
 
-    concatenatedList = right + topRow + left + bottomRow
+    #  print(len(pixels), len(concatenatedList), "\n\n\n")
+    for i in range(0, len(concatenatedList)):
+        #  print(i, pixels[i], concatenatedList[i])
+        pixels[i] = concatenatedList[i]
+    
+    pixels.show()
 
-    print(concatenatedList)
+    #  print(type(concatenatedList))
 
 
 
 
-toWatch = getImportantPixels(50, 16)
-setLEDs(toWatch, getFrame())
+toWatch = getImportantPixels(horizontalLEDs, verticalLEDs)
+print("pixels", len(toWatch[0]), len(toWatch[1]))
+while True:
+    setLEDs(toWatch, getFrame())
 
+
+cap.release()
+cv2.destroyAllWindows()
