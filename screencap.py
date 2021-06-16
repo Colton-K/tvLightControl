@@ -32,116 +32,136 @@ gammaCorrection = [
     215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255
 ]
 
+class tvBacklight:
+    def __init__(self, status="off", brightness=100, mode="edge"):
+        pixel_pin = board.D18
+        num_pixels = 2*horizontalLEDs + 2*verticalLEDs
+        ORDER = neopixel.RGB
 
+        self.status = status
+        self.brightness = brightness
+        self.mode = mode
 
-pixel_pin = board.D18
+        # init and blank pixels
+        self.pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=1, auto_write=False, pixel_order=ORDER)
+        self.pixels.fill((0,0,0))
+        self.pixels.show()
 
-num_pixels = 2*horizontalLEDs + 2*verticalLEDs
-#  ORDER = neopixel.GRB
-ORDER = neopixel.RGB
-#  ORDER = neopixel.GBR
+        # init recording
+        self.cap = cv2.VideoCapture(1)
+        #  cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        #  cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
-pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=1, auto_write=False, pixel_order=ORDER)
-pixels.fill((0,0,0))
-pixels.show()
-
-cap = cv2.VideoCapture(0)
-#  cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-#  cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-
-
-def getFrame():
-    #  img = ImageGrab.grab(bbox=(0,0,1920,1080)) #bbox specifies specific region (bbox= x,y,width,height *starts top-left)
-    #  img_np = np.array(img) #this is the array obtained from conversion
-    #  frame = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
-    ret, frame = cap.read()
-    #  cv2.imshow("test", frame)
-    #  cv2.waitKey(0)
-    #  cv2.destroyAllWindows()
-    return frame
-
-
-def getImportantPixels(horizontalLEDs, verticalLEDs): # assumes same # on top and bottom
-    f = getFrame()
-    resolution = len(f[0]), len(f) # width, height ex (1920, 1080)
-    print("Resolution:",resolution)
-
-    horizontalStep = (resolution[0] / horizontalLEDs)
-    xPixels = []
-    i = 0
-    while i < resolution[0]-1:
-        xPixels.append(int(i))
-        i += horizontalStep
-
-    #  print(len(xPixels))
-
-    verticalStep = int(resolution[1] / verticalLEDs)
-    yPixels = []
-    i = 0
-    while i < resolution[1]-1:
-        yPixels.append(i)
-        i += verticalStep
-
-    #  print(xPixels)
-    #  print(yPixels)
-
-    return xPixels, yPixels
-    
-
-def setLEDs(screenPix, frame): # make bottom right start of the chain going 
-    resolution = len(frame[0]), len(frame) # width, height ex (1920, 1080)
-    topRow = []
-    bottomRow = []
-    left = []
-    right = []
-
-    xPix, yPix = screenPix 
-    for p in xPix:
-        topRow.append(frame[0][p])
-        bottomRow.append(frame[resolution[1]-1][p])
-
-    for p in yPix:
-        left.append(frame[p][0])
-        right.append(frame[p][resolution[0]-1])
         
-        #  print(p, len(screenPix[0])-1, xPix[-1])
-        #  print(xPix)
+        self.toWatch = self.getPixels(horizontalLEDs, verticalLEDs, self.mode)
+        print("pixels", len(self.toWatch[0]), len(self.toWatch[1]))
 
-    #  print(topRow)
-    #  print(bottomRow)
-    #  print(left, "----------------------------")
-    #  print(right, "\n\n\n")
+    def fill(self, tup):
+        print('filling to', tup)
+        self.pixels.fill(tup)
+        self.pixels.show()
 
-    # make everything fit in a counterclockwise circle starting bottom right
-    right.reverse()
-    topRow.reverse()
-    concatenatedList = np.concatenate((right, topRow, left, bottomRow))
+    def getFrame(self):
+        ret, frame = self.cap.read()
+        return frame
 
-    #  print(len(pixels), len(concatenatedList), "\n\n\n")
-    for i in range(0, len(concatenatedList)):
-        #  print(i, pixels[i], concatenatedList[i])
-        t = concatenatedList[i]
-        b, r, g = t
-        b = gammaCorrection[b]
-        r = gammaCorrection[r]
-        g = gammaCorrection[g]
 
-        #  print(r, g, b)
-        pixels[i] = (r, g, b)
-        #  pixels[i] = (0,0,0)
+    def getPixels(self, horizontalLEDs, verticalLEDs, mode): # assumes same # on top and bottom
+        if mode == "edge":
+            f = self.getFrame()
+            resolution = len(f[0]), len(f) # width, height ex (1920, 1080)
+            print("Resolution:",resolution)
+
+            horizontalStep = (resolution[0] / horizontalLEDs)
+            xPixels = []
+            i = 0
+            while i < resolution[0]-1:
+                xPixels.append(int(i))
+                i += horizontalStep
+
+            #  print(len(xPixels))
+
+            verticalStep = int(resolution[1] / verticalLEDs)
+            yPixels = []
+            i = 0
+            while i < resolution[1]-1:
+                yPixels.append(i)
+                i += verticalStep
+
+            #  print(xPixels)
+            #  print(yPixels)
+
+            return xPixels, yPixels
     
-    pixels.show()
 
-    #  print(type(concatenatedList))
+    def setLEDs(self): # make bottom right start of the chain going 
+        screenPix = self.toWatch
+        frame = self.getFrame()
+        resolution = len(frame[0]), len(frame) # width, height ex (1920, 1080)
+        topRow = []
+        bottomRow = []
+        left = []
+        right = []
+
+        xPix, yPix = screenPix 
+        for p in xPix:
+            topRow.append(frame[0][p])
+            bottomRow.append(frame[resolution[1]-1][p])
+
+        for p in yPix:
+            left.append(frame[p][0])
+            right.append(frame[p][resolution[0]-1])
+            
+            #  print(p, len(screenPix[0])-1, xPix[-1])
+            #  print(xPix)
+
+        #  print(topRow)
+        #  print(bottomRow)
+        #  print(left, "----------------------------")
+        #  print(right, "\n\n\n")
+
+        # make everything fit in a counterclockwise circle starting bottom right
+        right.reverse()
+        topRow.reverse()
+        concatenatedList = np.concatenate((right, topRow, left, bottomRow))
+
+        #  print(len(pixels), len(concatenatedList), "\n\n\n")
+        for i in range(0, len(concatenatedList)):
+            #  print(i, pixels[i], concatenatedList[i])
+            t = concatenatedList[i]
+            b, r, g = t
+            b = gammaCorrection[b]
+            r = gammaCorrection[r]
+            g = gammaCorrection[g]
+
+            #  print(r, g, b)
+            self.pixels[i] = (r, g, b)
+            #  pixels[i] = (0,0,0)
+        
+        self.pixels.show()
+
+        #  print(type(concatenatedList))
+
+    def setLEDLoop(self, loopOn):
+        print("in loop")
+        while True:
+            if status == 'on':
+                self.setLEDs()
+    
+    def exit(self):
+        self.cap.release()
+        #  cv.destroyAllWindows()
 
 
+if __name__ == "__main__":
+    b = tvBacklight()
 
+    while True:
+        try:
+            b.setLEDs()
+        except KeyboardInterrupt:
+            break
 
-toWatch = getImportantPixels(horizontalLEDs, verticalLEDs)
-print("pixels", len(toWatch[0]), len(toWatch[1]))
-while True:
-    setLEDs(toWatch, getFrame())
-
-
-cap.release()
-cv2.destroyAllWindows()
+    print("exiting")
+    b.fill((0,0,0))
+    b.exit()

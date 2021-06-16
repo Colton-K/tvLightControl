@@ -1,0 +1,15 @@
+[Unit]
+Description=tvBacklightDriverService
+After=network-online.target
+
+[Service]
+ExecStart=/bin/python3 /home/pi/tvLightControl/tvLightDriver.py
+KillSignal=SIGINT
+WorkingDirectory=/home/pi/tvLightControl/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
