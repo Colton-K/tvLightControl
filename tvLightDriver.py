@@ -35,5 +35,11 @@ def off():
     os.system("systemctl stop tvLights.service")
     return "off"
 
+'''
+    make the rgb strips accessible to set different colors as well if the system is off
+        3 states - on, off, static
+        static mode can either be synced with rest of the room or independent
+'''
+
 if __name__ == "__main__":
     app.run(host=getIP(), port=5000)

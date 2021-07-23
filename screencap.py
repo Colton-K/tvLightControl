@@ -8,11 +8,20 @@ import board
 import neopixel
 
 '''
-define theseeeeee
+    strips must have the same number of leds on each side and on top and bottom
+    should be linked in following order
+    ________ 2 ________
+    |                 |
+                     
+    3                 1
+                     
+    |                 |
+    ________ 4 ________
 '''
-horizontalLEDs = 55
+horizontalLEDs = 55 
 verticalLEDs = 30
 
+# adjust for the non-linear scaling of color
 gammaCorrection = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
@@ -49,13 +58,15 @@ class tvBacklight:
 
         # init recording
         self.cap = cv2.VideoCapture(1)
-        #  cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        #  cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) # unnecessary, but my capture card is capable
         #  cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        #  cap.set(cv2.CAP_PROP_FPS, 30)
 
-        
+        # chooses the pixels to look at 
         self.toWatch = self.getPixels(horizontalLEDs, verticalLEDs, self.mode)
         print("pixels", len(self.toWatch[0]), len(self.toWatch[1]))
 
+    # sets every led to the same value
     def fill(self, tup):
         print('filling to', tup)
         self.pixels.fill(tup)
@@ -65,7 +76,7 @@ class tvBacklight:
         ret, frame = self.cap.read()
         return frame
 
-
+    # decides which pixels to get based on the number of leds and the resolution of the input
     def getPixels(self, horizontalLEDs, verticalLEDs, mode): # assumes same # on top and bottom
         if mode == "edge":
             f = self.getFrame()
@@ -93,7 +104,7 @@ class tvBacklight:
 
             return xPixels, yPixels
     
-
+    # gets the current frame and important pixels and sets the values of the leds accordingly
     def setLEDs(self): # make bottom right start of the chain going 
         screenPix = self.toWatch
         frame = self.getFrame()
@@ -112,42 +123,26 @@ class tvBacklight:
             left.append(frame[p][0])
             right.append(frame[p][resolution[0]-1])
             
-            #  print(p, len(screenPix[0])-1, xPix[-1])
-            #  print(xPix)
-
-        #  print(topRow)
-        #  print(bottomRow)
-        #  print(left, "----------------------------")
-        #  print(right, "\n\n\n")
-
         # make everything fit in a counterclockwise circle starting bottom right
+        #   same as pixart image above
         right.reverse()
         topRow.reverse()
         concatenatedList = np.concatenate((right, topRow, left, bottomRow))
 
         #  print(len(pixels), len(concatenatedList), "\n\n\n")
+        # actually set the pixels from the combined list
         for i in range(0, len(concatenatedList)):
-            #  print(i, pixels[i], concatenatedList[i])
             t = concatenatedList[i]
             b, r, g = t
             b = gammaCorrection[b]
             r = gammaCorrection[r]
             g = gammaCorrection[g]
 
-            #  print(r, g, b)
             self.pixels[i] = (r, g, b)
-            #  pixels[i] = (0,0,0)
         
         self.pixels.show()
 
-        #  print(type(concatenatedList))
-
-    def setLEDLoop(self, loopOn):
-        print("in loop")
-        while True:
-            if status == 'on':
-                self.setLEDs()
-    
+    # clean up opencv
     def exit(self):
         self.cap.release()
         #  cv.destroyAllWindows()
