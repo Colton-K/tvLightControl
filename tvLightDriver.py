@@ -1,6 +1,6 @@
 #!/bin/python3
 
-from flask import Flask
+from flask import Flask, request
 import os
 import socket
 
@@ -34,6 +34,22 @@ def on():
 def off():
     os.system("systemctl stop tvLights.service")
     return "off"
+
+@app.route("/color", methods=["POST", "GET"])
+def color():
+    os.system("systemctl stop tvLights.service")
+    b = tvBacklight()
+    
+    if request.method == "POST":
+        r = request.form["r"]
+        g = request.form["g"]
+        b = request.form["b"]
+    else:
+        r = request.args.get("r")
+        g = request.args.get("g")
+        b = request.args.get("b")
+
+    b.fill((r,g,b))
 
 '''
     make the rgb strips accessible to set different colors as well if the system is off

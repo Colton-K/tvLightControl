@@ -43,7 +43,7 @@ gammaCorrection = [
 
 class tvBacklight:
     def __init__(self, status="off", brightness=100, mode="edge"):
-        pixel_pin = board.D18
+        pixel_pin = board.D18 # pin 12 on rpi
         num_pixels = 2*horizontalLEDs + 2*verticalLEDs
         ORDER = neopixel.RGB
 
