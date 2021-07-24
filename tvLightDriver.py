@@ -4,7 +4,10 @@ from flask import Flask, request
 import os
 import socket
 
-from screencap import tvBacklight
+import board
+import neopixel
+horizontalLEDs = 55 
+verticalLEDs = 30
 
 app = Flask(__name__)
 
@@ -38,7 +41,6 @@ def off():
 @app.route("/color", methods=["POST", "GET"])
 def color():
     os.system("systemctl stop tvLights.service")
-    b = tvBacklight()
     
     if request.method == "POST":
         r = request.form["r"]
@@ -49,7 +51,27 @@ def color():
         g = request.args.get("g")
         b = request.args.get("b")
 
-    b.fill((r,g,b))
+    if r is None:
+        r = 0
+    else:
+        r = int(r)
+    if g is None:
+        g = 0
+    else:
+        g = int(g)
+    if b is None:
+        b = 0
+    else:
+        b = int(b)
+
+    pixel_pin = board.D18 # pin 12 on rpi
+    num_pixels = 2*horizontalLEDs + 2*verticalLEDs
+    ORDER = neopixel.RGB
+    pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=1, auto_write=False, pixel_order=ORDER)
+    pixels.fill((g,r,b))
+    pixels.show()
+
+    return f"{r},{g},{b}"
 
 '''
     make the rgb strips accessible to set different colors as well if the system is off
