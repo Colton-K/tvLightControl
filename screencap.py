@@ -47,6 +47,8 @@ class tvBacklight:
         num_pixels = 2*horizontalLEDs + 2*verticalLEDs
         ORDER = neopixel.RGB
 
+        self.blank = np.load("noConnection.npy")
+
         self.status = status
         self.brightness = brightness
         self.mode = mode
@@ -57,7 +59,7 @@ class tvBacklight:
         self.pixels.show()
 
         # init recording
-        self.cap = cv2.VideoCapture(1)
+        self.cap = cv2.VideoCapture(0)
         #  cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) # unnecessary, but my capture card is capable
         #  cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         #  cap.set(cv2.CAP_PROP_FPS, 30)
@@ -106,41 +108,47 @@ class tvBacklight:
     
     # gets the current frame and important pixels and sets the values of the leds accordingly
     def setLEDs(self): # make bottom right start of the chain going 
+        
         screenPix = self.toWatch
         frame = self.getFrame()
-        resolution = len(frame[0]), len(frame) # width, height ex (1920, 1080)
-        topRow = []
-        bottomRow = []
-        left = []
-        right = []
 
-        xPix, yPix = screenPix 
-        for p in xPix:
-            topRow.append(frame[0][p])
-            bottomRow.append(frame[resolution[1]-1][p])
+        if not np.equal(frame, self.blank).all():
+            print("in loop")
+            resolution = len(frame[0]), len(frame) # width, height ex (1920, 1080)
+            topRow = []
+            bottomRow = []
+            left = []
+            right = []
 
-        for p in yPix:
-            left.append(frame[p][0])
-            right.append(frame[p][resolution[0]-1])
+            xPix, yPix = screenPix 
+            for p in xPix:
+                topRow.append(frame[0][p])
+                bottomRow.append(frame[resolution[1]-1][p])
+
+            for p in yPix:
+                left.append(frame[p][0])
+                right.append(frame[p][resolution[0]-1])
+                
+            # make everything fit in a counterclockwise circle starting bottom right
+            #   same as pixart image above
+            right.reverse()
+            topRow.reverse()
+            concatenatedList = np.concatenate((right, topRow, left, bottomRow))
+
+            #  print(len(pixels), len(concatenatedList), "\n\n\n")
+            # actually set the pixels from the combined list
+            for i in range(0, len(concatenatedList)):
+                t = concatenatedList[i]
+                b, r, g = t
+                b = gammaCorrection[b]
+                r = gammaCorrection[r]
+                g = gammaCorrection[g]
+
+                self.pixels[i] = (r, g, b)
             
-        # make everything fit in a counterclockwise circle starting bottom right
-        #   same as pixart image above
-        right.reverse()
-        topRow.reverse()
-        concatenatedList = np.concatenate((right, topRow, left, bottomRow))
-
-        #  print(len(pixels), len(concatenatedList), "\n\n\n")
-        # actually set the pixels from the combined list
-        for i in range(0, len(concatenatedList)):
-            t = concatenatedList[i]
-            b, r, g = t
-            b = gammaCorrection[b]
-            r = gammaCorrection[r]
-            g = gammaCorrection[g]
-
-            self.pixels[i] = (r, g, b)
-        
-        self.pixels.show()
+            self.pixels.show()
+        else:
+            self.fill((0,0,0))
 
     # clean up opencv
     def exit(self):

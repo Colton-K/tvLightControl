@@ -36,7 +36,20 @@ def on():
 @app.route("/off")
 def off():
     os.system("systemctl stop tvLights.service")
+
+    pixel_pin = board.D18 # pin 12 on rpi
+    num_pixels = 2*horizontalLEDs + 2*verticalLEDs
+    ORDER = neopixel.RGB
+    pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=1, auto_write=False, pixel_order=ORDER)
+    pixels.fill((g,r,b))
+    pixels.show()
+    
     return "off"
+
+@app.route("/restart")
+def restart():
+    os.system("reboot")
+    return "restarting"
 
 @app.route("/color", methods=["POST", "GET"])
 def color():
